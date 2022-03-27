@@ -1,0 +1,8 @@
+Request Pipe Format: 	Book&Chapter&Verse&numberOfVersesRequested&BibleVersionNumber&
+
+// The request pipe sends the first line to initialize which index the server is going to use
+// The second line uses '&' as its delimiter
+
+Reply Pipe Format: 	Book&Chapter&Verse&VerseText&StatusCode&
+
+5 bible versions implemented
