@@ -8,246 +8,719 @@
   PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-<title>XML Bible Demo - MVNU</title>
-<script type="text/javascript">
-function setup() {
-  if (window.XMLHttpRequest)
-    {// code for IE7+, Firefox, Chrome, Opera, Safari
-    xmlhttp = new XMLHttpRequest();
-    }
-  else
-    {// code for IE6, IE5
-    xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-    }
-  // location of XML Bible files, must be on same web server
-  // that hosts this web page to avoid Cross-Domain request restrictions
-  biblePath = "/class/csc3004/XMLBible/"
-}
+	<title>MVNU XML BIBLE</title>
 
-function getresponse () {
-  // read input values from user
-  var bible = document.getElementById('bible').value;
-  var b = document.getElementById('book').value;
-  var c = document.getElementById('chapter').value;
-  var v = parseInt(document.getElementById('verse').value);
-  var verses = parseInt(document.getElementById('verses').value);
-
-  // TODO: add code to select a version of the Bible based on user input
-  // (only KJV and WEB versions are available with XML files)
-  var XMLBook = biblePath;
-  if (bible == 1) {
-      XMLBook = XMLBook + "web_by_book/" + b + ".xml";
-  }
-  else if (bible == 2) {
-      XMLBook = XMLBook + "kjv_by_book/" + b + ".xml"; 
-  }
-  else {
-	  // code for other xml versions of bible THAT I DONT HAVE
-  }
-  xmlhttp.open("GET",XMLBook,false);
-  xmlhttp.send();
-  xmlDoc = xmlhttp.responseXML;
-
-  var bookInfo = "<h6>Book retrieved from file: " + XMLBook + "</h6>";
-  document.all.headArea.innerHTML = "<h1><font color=blue>XML Bible Demo Output</font></h1>"
-	  + bookInfo;
-	var response = "";
-	var boo = b;
-    var cha = c;
-	var ver = v;
-	var head = true;
-    let content = { 'Book': boo, 'Chapter': cha, 'Verse': ver, 'Head': head, 'bookFile': XMLBook }; // Have an object store bible ops, then modify them internally
-	for (var i = 0; i < verses; i++) {
-		try {
-			document.all.responseArea.innerHTML = " ";
-			if (i > 0) {
-				content['Verse'] += 1;
-			}
-			vtext = getVerse(content);
-			//document.all.responseArea.innerHTML += "<p>" + vtext + "</p>";
-			response += vtext + " ";
-            content['Head'] = false;
+	<style type="text/css">
+		html, body {
+			background: #392613;
+			height: 100%;
+			overflow: hidden;
 		}
-        catch (error) {
-            if (error == "no chapter") {
-				//document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
-				response += "<b><i>No such chapter " + cha + " in book " + boo + "</i></b>";
-				break;
-            }
-            if (error == "no verse") {
-				//document.all.responseArea.innerHTML += "<b><i>No such verse " + v + "</i></b>";
-				//response += "<b><i>No such verse " + v + "</i></b>";
-                content['Head'] = true;
-                content['Chapter'] = (parseInt(content['Chapter']) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
-				content['Verse'] = 1;
-				try {
-					vtext = getVerse(content);
-					response += vtext + " ";
-					content['Head'] = false;
+
+		div {
+			padding: 0;
+			margin: 0;
+		}
+
+		.container {
+			display: flex;
+		}
+
+		div.information {
+			border: 0.1em #bcb;
+			padding-left: 0.5em;
+			overflow: auto;
+			flex: 0.5;
+		}
+
+		h1.information {
+			text-align: center;
+			font-size: 1.5em;
+			padding: 0;
+			margin: 0;
+			background-color: #bcb;
+		}
+
+		.horizontal {
+			flex-direction: row;
+		}
+
+		.vertical {
+			flex-direction: column;
+		}
+
+		.centered {
+			justify-content: center;
+			align-items: center;
+		}
+
+		.wide {
+			min-width: 60%;
+			width: 100%;
+		}
+
+        .noSpace {
+            margin-top: 0.1em;
+            margin-bottom: 0.1em;
+        }
+
+        #inputArea {
+			flex-flow: row wrap;
+			height: 25%;
+			min-height: 25vh;
+            background: #808080;
+            padding: 0;
+            margin: 0;
+            flex: 0.1;
+            margin-bottom: 0.25em;
+            border: 2px solid black;
+			/*overflow: auto;*/
+        }
+
+        #contentArea {
+            height: 75%; /*25vh*/
+            padding: 10px;
+            margin: 0;
+            flex: 0.85;
+            overflow: auto;
+            background: #EEE1C6;
+            border: 2px solid black;
+        }
+
+        #headArea {
+            height: 0vh;
+            background: #392613;
+            overflow: auto;
+            margin-bottom: 0.1em;
+        }
+
+        #responseArea {
+            overflow: auto;
+            background: #EEE1C6;
+            height: 100%;
+            /*border: 2px solid black;*/
+        }
+
+        #referencesArea {
+            height: 90%; /*22*/
+            text-align: center;
+            font-size: 1.5em;
+            padding: 10px;
+            margin: 0;
+            overflow: auto;
+            background-color: #808080;
+            /*border: 2px solid black;*/
+        }
+
+        #tableArea {
+            height: 90%; 
+            padding: 10px;
+            margin: 0;
+            overflow: auto;
+            background-color: #808080;
+        }
+
+        #testArea {
+            height: 90%;
+            text-align: center;
+            font-size: 1.5em;
+            padding: 10px;
+            margin: 0;
+            /*flex: 0.85;*/
+            overflow: auto;
+            background: #808080;
+            /*border: 2px solid black;*/
+        }
+	</style>
+
+	<script type="text/javascript">
+		function setup() {
+			if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+				xmlhttp = new XMLHttpRequest();
+			}
+			else {// code for IE6, IE5
+				xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+			}
+			// location of XML Bible files, must be on same web server
+			// that hosts this web page to avoid Cross-Domain request restrictions
+			biblePath = "/class/csc3004/XMLBible/"
+		}
+
+		function getresponse() {
+			// read input values from user
+			window.bible = document.getElementById('bible').value; // Global variable for later reference to the version of the bible
+			var b = document.getElementById('book').value;
+			var c = document.getElementById('chapter').value;
+			var v = parseInt(document.getElementById('verse').value);
+			var verses = parseInt(document.getElementById('verses').value);
+
+			// TODO: add code to select a version of the Bible based on user input
+			// (only KJV and WEB versions are available with XML files)
+			var XMLBook = biblePath;
+			if (bible == 1) {
+				XMLBook = XMLBook + "web_by_book/" + b + ".xml";
+			}
+			else if (bible == 2) {
+				XMLBook = XMLBook + "kjv_by_book/" + b + ".xml";
+			}
+			else {
+				// code for other xml versions of bible THAT I DONT HAVE
+			}
+			xmlhttp.open("GET", XMLBook, false);
+			xmlhttp.send();
+			xmlDoc = xmlhttp.responseXML; ///////////////////////////////// Made global
+
+			var bookInfo = " Book retrieved from file: " + XMLBook;
+			document.all.headArea.innerHTML = "<h6><font color=#000000>MVNU XML Bible Output</font>"
+				+ bookInfo + "</h6>";
+			var response = "";
+			var boo = b;
+			var cha = c;
+			var ver = v;
+			var head = true;
+			var content = { 'Book': boo, 'Chapter': cha, 'Verse': ver, 'Head': head, 'bookFile': XMLBook }; // Have an object store bible ops, then modify them internally
+			var goAhead = false;
+			try {
+				getVerse(content);
+				goAhead = true;
+			}
+			catch (error) {
+                document.all.responseArea.innerHTML = "";
+                document.all.testArea.innerHTML = "";
+                document.all.referencesArea.innerHTML = "";
+                if (error == "no chapter") {
+                    //document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
+                    response += "<b><i>No such chapter " + document.getElementById('chapter').value + " in this book </i></b>";
+                }
+				if (error == "no verse") {
+                    //document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
+                    response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
 				}
-				catch (error) {											 //AND IT OVERRIDES ANY VARIABLES OUTSIDE ITSELF
-                    //response += "<b><i>No such chapter " + cha + " in book " + boo + "</i></b>";
-                    //break;
-                    content['Head'] = true;
-                    content['Book'] = (parseInt(content['Book']) + 1).toString();
-                    content['bookFile'] = "/class/csc3004/XMLBible/";
-                    if (bible == 1) {
-                        content['bookFile'] = content['bookFile'] + "web_by_book/" + content['Book'] + ".xml";
-                    }
-                    else if (bible == 2) {
-                        content['bookFile'] = content['bookFile'] + "kjv_by_book/" + content['Book'] + ".xml";
-                    }
-                    else {
-                        // code for other xml versions of bible THAT I DONT HAVE
-                    }
-                    xmlhttp.open("GET", content['bookFile'], false);
-                    xmlhttp.send();
-                    xmlDoc = xmlhttp.responseXML;
-                    content['Chapter'] = ((parseInt(content['Chapter']) - parseInt(content['Chapter'])) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
-					content['Verse'] = 1;
+			}
+			if (goAhead) {
+				for (var i = 0; i < verses; i++) {
 					try {
+						document.all.responseArea.innerHTML = " ";
+						if (i > 0) {
+							content['Verse'] += 1;
+						}
 						vtext = getVerse(content);
+						//document.all.responseArea.innerHTML += "<p>" + vtext + "</p>";
 						response += vtext + " ";
 						content['Head'] = false;
 					}
 					catch (error) {
-						response += "<b><i>End of Bible</i></b>";
-                        break;
+						if (error == "no chapter") {
+							//document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
+							response += "<b><i>No such chapter " + cha + " in this book </i></b>";
+							break;
+						}
+						if (error == "no verse") {
+							//document.all.responseArea.innerHTML += "<b><i>No such verse " + v + "</i></b>";
+							//response += "<b><i>No such verse " + v + "</i></b>";
+							if (Number.isInteger(content['Verse'])) {
+								content['Head'] = true;
+								content['Chapter'] = (parseInt(content['Chapter']) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
+								content['Verse'] = 1;
+								try {
+									vtext = getVerse(content);
+									response += vtext + " ";
+									content['Head'] = false;
+								}
+								catch (error) {											 //AND IT OVERRIDES ANY VARIABLES OUTSIDE ITSELF
+									//response += "<b><i>No such chapter " + cha + " in book " + boo + "</i></b>";
+									//break;
+									content['Head'] = true;
+									content['Book'] = (parseInt(content['Book']) + 1).toString();
+									content['bookFile'] = "/class/csc3004/XMLBible/";
+									if (bible == 1) {
+										content['bookFile'] = content['bookFile'] + "web_by_book/" + content['Book'] + ".xml";
+									}
+									else if (bible == 2) {
+										content['bookFile'] = content['bookFile'] + "kjv_by_book/" + content['Book'] + ".xml";
+									}
+									else {
+										// code for other xml versions of bible THAT I DONT HAVE
+									}
+									xmlhttp.open("GET", content['bookFile'], false);
+									xmlhttp.send();
+									xmlDoc = xmlhttp.responseXML;
+									content['Chapter'] = ((parseInt(content['Chapter']) - parseInt(content['Chapter'])) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
+									content['Verse'] = 1;
+									try {
+										vtext = getVerse(content);
+										response += vtext + " ";
+										content['Head'] = false;
+									}
+									catch (error) {
+										response += ""; // End of Bible
+										break;
+									}
+								}
+							}
+							else {
+								response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
+								break;
+							}
+						}
+					}
+				}
+			}
+			document.all.responseArea.innerHTML += "<p>" + response + "</p>";
+			//clear definition window
+			document.all.testArea.innerHTML = "";
+			document.all.referencesArea.innerHTML = "";
+		} // end getResponse
+
+		function getVerse(info) {
+			book = info['Book'];
+			chapter = info['Chapter'];
+			verse = info['Verse'];
+			header = info['Head'];
+			var verseOutput = "";
+			if (header) {
+				verseOutput += "<p>" + xmlDoc.getElementsByTagName("book")[0].getAttribute("name");
+			}
+			var c = xmlDoc.getElementsByTagName("chapter")[chapter - 1];
+			if (c == null) {
+				throw "no chapter";
+			}
+			if (header) {
+				verseOutput += " ";
+				verseOutput += c.getAttribute("number");
+			}
+			var v = c.getElementsByTagName("verse")[verse - 1]; // Added a semicolon I saw was missing
+			if (v == null) {
+				throw "no verse";
+			}
+			if (header) {
+				verseOutput += " </p>";
+			}
+			verseOutput += "<sub>" + v.getAttribute("number") + "</sub>";
+			for (j = 0; j < v.childNodes.length; j++) {
+				var nodeStr = getNodeString(v.childNodes[j]);
+				verseOutput += nodeStr;
+			}
+			return (verseOutput);
+		} // end getVerse
+
+		function getNodeString(node) {
+			var strongsEnabled = document.getElementById("strongs").checked;
+			var result = "";
+			if (node.nodeType == 3) { // type 3: text node
+				result += node.nodeValue;
+				result += " ";
+			}
+			if (node.nodeType == 1) { // type 1: tag
+				if (node.nodeName == "em") {
+					result += "<i>";
+					result += node.childNodes[0].nodeValue;
+					result += "</i> ";
+				}
+                if (node.nodeName == "strong") { // Strong tags have words in them. Hyperlink like strongs?
+                    for (n = 0; n < node.childNodes.length; n++) {
+                        var nodeStr = "<b>" + getNodeString(node.childNodes[n]) + "</b>";
+                        result += nodeStr;
                     }
 				}
-            }
-        }
-	}
-    document.all.responseArea.innerHTML += "<p>" + response + "</p>";
-} // end getResponse
+				if (node.nodeName == "description") {
+                    for (n = 0; n < node.childNodes.length; n++) {
+                        var nodeStr = "<i>" + getNodeString(node.childNodes[n]) + "</i>";
+                        result += nodeStr;
+                    }
+                }
+				else if (node.nodeName == "STYLE") {
+					result += '<span style="' + node.getAttribute("css") + '">';
+					for (n = 0; n < node.childNodes.length; n++) {
+						var nodeStr = getNodeString(node.childNodes[n]);
+						result += nodeStr;
+					}
+					result += "</span> ";
+				}
+				else if (node.nodeName == "strongs") {
+					if (node.childNodes[0] != null) {
+						// show the text of the word that is inside the strong tag
+						result += node.childNodes[0].nodeValue;
+						if (strongsEnabled) {
+							if (node.hasAttribute("hebrew")) {
+								var lexID = node.getAttribute("hebrew");
+								result += "<a href='javascript:getDef(\"hebrew\"," + lexID + ")'>";
+								result += "<i><font size=1 color=blue><sub>";
+								result += node.getAttribute("hebrew");
+								result += "</sub></font></i></a> ";
+							}
+							else if (node.hasAttribute("greek")) {
+								var lexID = node.getAttribute("greek");
+								result += "<a href='javascript:getDef(\"greek\"," + lexID + ")'>";
+								result += "<i><font size=1 color=blue><sub>";
+								result += node.getAttribute("greek");
+								result += "</sub></font></i></a> ";
+							}
+							else if (node.hasAttribute("number")) {
+								var lexID = node.getAttribute("number");
+								result += "<a href='javascript:getDef(\"number\"," + lexID + ")'>";
+								result += "<i><font size=1 color=blue><sub>";
+								result += node.getAttribute("number");
+								result += "</sub></font></i></a> ";
+							}
+						}
+					}
+				}
+				else if (node.nodeName == "link") {
+					// Show hyperlinks in definition hyperlink (inception)
+					if (node.childNodes[0] != null) {
+						if (node.hasAttribute("target")) {
+							var targetID = node.getAttribute("target");
+							var number = parseInt(targetID.substring(1));
+							if (targetID.charAt(0) == "H") {
+								result += "<a href='javascript:getDef(\"hebrew\"," + number + ")'>";
+							}
+							else if (targetID.charAt(0) == "G") {
+								result += "<a href='javascript:getDef(\"greek\"," + number + ")'>";
+							}
+							result += "<i><font size=1 color=blue>";
+							result += node.getAttribute("target");
+							result += "</font></i></a> ";
+						}
+					}
+				}
+				else if (node.nodeName == "ref") { 
+                    bookNames = [
+                        "Genesis",
+                        "Exodus",
+                        "Leviticus",
+                        "Numbers",
+                        "Deuteronomy",
+                        "Joshua",
+                        "Judges",
+                        "Ruth",
+                        "1 Samuel",
+                        "2 Samuel",
+                        "1 Kings",
+                        "2 Kings",
+                        "1 Chronicles",
+                        "2 Chronicles",
+                        "Ezra",
+                        "Nehemiah",
+                        "Esther",
+                        "Job",
+                        "Psalms",
+                        "Proverbs",
+                        "Ecclesiastes",
+                        "Song of Solomon",
+                        "Isaiah",
+                        "Jeremiah",
+                        "Lamentations",
+                        "Ezekiel",
+                        "Daniel",
+                        "Hosea",
+                        "Joel",
+                        "Amos",
+                        "Obadiah",
+                        "Jonah",
+                        "Micah",
+                        "Nahum",
+                        "Habakkuk",
+                        "Zephaniah",
+                        "Haggai",
+                        "Zechariah",
+                        "Malachi",
+                        "Matthew",
+                        "Mark",
+                        "Luke",
+                        "John",
+                        "Acts",
+                        "Romans",
+                        "1 Corinthians",
+                        "2 Corinthians",
+                        "Galatians",
+                        "Ephesians",
+                        "Philippians",
+                        "Colossians",
+                        "1 Thessalonians",
+                        "2 Thessalonians",
+                        "1 Timothy",
+                        "2 Timothy",
+                        "Titus",
+                        "Philemon",
+                        "Hebrews",
+                        "James",
+                        "1 Peter",
+                        "2 Peter",
+                        "1 John",
+                        "2 John",
+                        "3 John",
+                        "Jude",
+                        "Revelation",
+					];
 
-function getVerse(info) {
-    book = info['Book'];
-    chapter = info['Chapter'];
-    verse = info['Verse'];
-    header = info['Head'];
-	var verseOutput = "";
-	if (header) {
-		verseOutput += "<p>" + xmlDoc.getElementsByTagName("book")[0].getAttribute("name");
-	}
-	var c = xmlDoc.getElementsByTagName("chapter")[chapter-1];
-	if (c == null) {
-		throw "no chapter";
-	}
-	if (header) {
-		verseOutput += " ";
-		verseOutput += c.getAttribute("number");
-	}
-	var v = c.getElementsByTagName("verse")[verse - 1]
-	if (v == null) { 
-		throw "no verse";
-    }
-	if (header) {
-		verseOutput += " </p>";
-	}
-    verseOutput += "<sub>" + v.getAttribute("number") + "</sub>";
-	for (j=0; j < v.childNodes.length; j++) {
-	var nodeStr = getNodeString(v.childNodes[j]);
-	verseOutput += nodeStr;
-	}
-	return(verseOutput);
-} // end getVerse
-
-function getNodeString(node) {
-	var strongsEnabled = document.getElementById("strongs").checked;
-	var result = "";
-	if (node.nodeType == 3) { // type 3: text node
-		result += node.nodeValue;
-		result += " ";
-	} 
-	if (node.nodeType == 1) { // type 1: tag
-		if (node.nodeName == "em") {
-		   result += "<i>";
-		   result += node.childNodes[0].nodeValue;
-		   result += "</i> ";
-		}
-		else if (node.nodeName == "STYLE") {
-		   result += '<span style="' + node.getAttribute("css") + '">';
-		   for (n=0; n < node.childNodes.length; n++) {
-				var nodeStr = getNodeString(node.childNodes[n]);
-				result += nodeStr;
+					// Link to a verse, render as hyperlink.
+					var book = "";
+                    var b = node.getAttribute("b");
+                    var c = node.getAttribute("ch");
+                    var v = node.getAttribute("v");
+                    result += "<a href='javascript:verseRedirect(" + b + "," + c + "," + v + ")'>"; //<-- link not working
+					result += bookNames[b - 1] + " " + c + ":" + v; // Passing book doesnt work. Perhaps because its a string while the rest of the vars are ints
+					result += "</a> "; //verseRedirect(contents)
+				}
 			}
-		   result += "</span> ";
-		}
-		else if (node.nodeName=="strongs") {
-		   if (node.childNodes[0] != null) {
-		     // show the text of the word that is inside the strong tag
-			 result += node.childNodes[0].nodeValue;
-			   if (strongsEnabled) {
-                   if (node.hasAttribute("hebrew")) {
-					   var strong = node.getAttribute("hebrew");
-                       result = result + "<sub>" + strong + "</sub>";
-                   }
-                   else if (node.hasAttribute("greek")) {
-					   var strong = node.getAttribute("greek");
-                       result = result + "<sub>" + strong + "</sub>";
-                   }
-                   else if (node.hasAttribute("number")) {
-					   var strong = node.getAttribute("number");
-                       result = result + "<sub>" + strong + "</sub>";
-				   }
-			 	}
-		   }
-		   // TO DO: use hasAttribute(attributename) to determine
-		   // if the strongs tag has attributes named hebrew, greek, or number
-		   // When the attribute exists, add the strong number to the HTML result
-		   // as the contents of a <sub> tag, which will display it as a subscript
-		   // after the word.
+			return (result);
+		} // end getNodeString
 
-	   }
-	}
-	return(result);
-} // end getNodeString
-</script>
+		function verseRedirect(book, chapter, verse) {
+			// Create object here
+			var header = true;
+			var redirectPath = "";
+			if (bible == 1) {
+                redirectPath = "/class/csc3004/XMLBible/" + "web_by_book/" + book + ".xml";
+			}
+			else if (bible == 2) {
+                redirectPath = "/class/csc3004/XMLBible/" + "kjv_by_book/" + book + ".xml";
+			}
+			else {
+				// Nothing
+			}
+            var content = { 'Book': book, 'Chapter': chapter, 'Verse': verse, 'Head': header, 'bookFile': redirectPath };
+            xmlhttp.open("GET", redirectPath, false);
+            xmlhttp.send();
+			xmlDoc = xmlhttp.responseXML;
+            var response = getVerse(content);
+			document.all.responseArea.innerHTML = response + " ";
+        }
+
+		// Retrieve and display lexicon entries
+		function getDef(lang, stringNum) {
+			var strongsBook = "/class/csc3004/XMLBible/";
+			var strWithPre = "";
+
+			// Calculate path to which strongs file to open
+			var intNum = parseInt(stringNum);
+			var divResult = intNum;
+			var count = 0;
+			if (intNum > 100) {   // how many times does 100 fit into the strongs number?
+				while (divResult > 100) {
+					divResult -= 100;
+					count++;
+				}
+			}
+			if ((intNum > 100) && (intNum % 100 == 0)) { // compansate for the next 100s number being last in the file with the previous 100's place
+				count--;
+			}
+			dictPart = count.toString();
+
+			// Complete file path
+			if (lang == "hebrew") {
+				strongsBook += "heb_strongs/heb" + dictPart + ".xml";
+				strWithPre += "H" + stringNum;
+			}
+			else if (lang == "greek") {
+				strongsBook = strongsBook + "greek_strongs/grk" + dictPart + ".xml";
+				strWithPre += "G" + stringNum;
+			}
+			else {
+				// code for other strongs languages THAT I DONT HAVE
+			}
+
+			// Open the file
+			xmlhttp.open("GET", strongsBook, false);
+			xmlhttp.send();
+			strongsDoc = xmlhttp.responseXML;
+			var defOutput = "<p><b><u>Definition of ";
+
+			// Need to get correct item with item id comparison
+			var item = strongsDoc.getElementById(strWithPre);
+
+			//Show <strong-id>, <title>, <transliteration> tags in testArea
+			var strongID = item.getElementsByTagName("strong_id")[0];
+			defOutput += getNodeString(strongID.childNodes[0]) + "</u></b></p>";
+
+			var title = item.getElementsByTagName("title")[0];
+            defOutput += "<p class='noSpace'>" + "Title: " + getNodeString(title.childNodes[0]) + "</p>";
+
+			var translit = item.getElementsByTagName("transliteration")[0];
+            defOutput += "<p class='noSpace'>" + "Transliteration: " + getNodeString(translit.childNodes[0]) + "</p>";
+
+			//Also show the rest of the tags that have subtags needing processed
+            defOutput += "<p class='noSpace'>" + "Pronunciation: ";
+			var pronunc = item.getElementsByTagName("pronunciation")[0];
+			for (j = 0; j < pronunc.childNodes.length; j++) {
+				var nodeStr = getNodeString(pronunc.childNodes[j]);
+				defOutput += nodeStr;
+			}
+			defOutput += "</p>";
+
+            defOutput += "<p class='noSpace'>" + "Description: ";
+			var description = item.getElementsByTagName("description")[0];
+			for (j = 0; j < description.childNodes.length; j++) {
+				var nodeStr = getNodeString(description.childNodes[j]);
+				defOutput += nodeStr;
+			}
+			defOutput += "</p>";
+
+			// Print out definition data
+            document.all.testArea.innerHTML = "<p class='noSpace'>" + defOutput + "</p>";
+			document.all.referencesArea.innerHTML = "<p><b><u>References</u></b></p>" + getDefRefs(lang, stringNum);
+		}
+
+		function getDefRefs(lang, stringNum) {
+			var hebPath = "/class/csc3004/XMLBible/bible_refs_of_strongs_numbers/bible_refs_by_strongs_num_ot.xml";
+			var grkPath = "/class/csc3004/XMLBible/bible_refs_of_strongs_numbers/bible_refs_by_strongs_num_nt.xml";
+			var refPath = "";
+			if (lang == "hebrew") {
+				refPath += hebPath; 
+			}
+			else if (lang == "greek") {
+				refPath += grkPath;
+			}
+			xmlhttp.open("GET", refPath, false);
+			xmlhttp.send();
+			strongsRefsDoc = xmlhttp.responseXML;
+
+			
+			// Get the number of the strongs and look it up in the refs_of_strongs to find related verses
+			var intNum = parseInt(stringNum);
+			var item = strongsRefsDoc.getElementsByTagName("item")[intNum - 1]; // Line of file. childNodes will be the refs
+			var text = "";
+			if (item) {
+				// Add each reference in the item to the output
+				for (const node of item.childNodes) {
+                    text += "<p class='noSpace'>" + getNodeString(node) + "</p>"; 
+				}
+				return text;
+			}
+			else {
+				return "No references found"
+			}
+		}
+
+	</script>
 </head>
 
-<body onLoad="setup()">
-<form onsubmit="return false"> <!-- submit button defines handler below:
-                                    onclick="javascript: getresponse()" -->
-<h1>Bible Search from XML files</h1>
-<table>
-<TR>
-<TD ALIGHN=RIGHT VALIGN=TOP>Bible</TD>
-<TD ALIGN=LEFT VALIGN=TOP>
-<SELECT NAME="bible" ID=bible>
-<OPTION VALUE="1">World English Bible
-<OPTION VALUE="2">King James Version
-</SELECT>
-</TD>
-</TR>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Book Number</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="book" TYPE="text" MAXLENGTH=2  id=book></TD>
-</TR>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Chapter</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="chapter" TYPE="text" MAXLENGTH=3  id=chapter></TD>
-</TR>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Verse</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="verse" TYPE="text" MAXLENGTH=3 id=verse></TD>
-</TR>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Verses</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="verses" TYPE="text" MAXLENGTH=3 id=verses></TD>
-</TR>
-<TR>
-<TD ALIGN=RIGHT VALIGN=TOP>Lexicon #s</TD>
-<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="strongs" TYPE="checkbox" id="strongs"></TD>
-</TR>
-</table>
-<p>
-<input type="submit" onclick="javascript: getresponse()" name="submit" value="Submit" />
-</p>
-</form>
-<div id = "headArea">
-</div>
-<div id = "responseArea">
-</div>
+
+<body onLoad="setup()" class="container vertical">
+	<div id="inputArea" class="container">
+		<div id="tableArea">
+			<form onsubmit="return false">
+				<!-- submit button defines handler below:
+				 onclick="javascript: getresponse()" -->
+				<h1>Bible Search from XML files</h1>
+				<table>
+					<TR>
+						<TD ALIGHN=RIGHT VALIGN=TOP>Bible</TD>
+						<TD ALIGN=LEFT VALIGN=TOP>
+							<SELECT NAME="bible" ID=bible>
+								<OPTION VALUE="1">World English Bible
+								<OPTION VALUE="2">King James Version
+							</SELECT>
+						</TD>
+					</TR>
+					<TR>
+						<TD ALIGHN=RIGHT VALIGN=TOP>Book Number</TD>
+						<!--<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="book" TYPE="text" MAXLENGTH=2 id=book></TD>-->
+						<TD ALIGN=LEFT VALIGN=TOP>
+							<SELECT NAME="book" ID=book>
+								<option value="1">Genesis
+								<option value="2">Exodus
+								<option value="3">Leviticus
+								<option value="4">Numbers
+								<option value="5">Deuteronomy
+								<option value="6">Joshua
+								<option value="7">Judges
+								<option value="8">Ruth
+								<option value="9">1st Samuel
+								<option value="10">2nd Samuel
+								<option value="11">1st Kings
+								<option value="12">2nd Kings
+								<option value="13">1st Chronicles
+								<option value="14">2nd Chronicles
+								<option value="15">Ezra
+								<option value="16">Nehemiah
+								<option value="17">Esther
+								<option value="18">Job
+								<option value="19">Psalms
+								<option value="20">Proverbs
+								<option value="21">Ecclesiastes
+								<option value="22">Song of Solomon
+								<option value="23">Isaiah
+								<option value="24">Jeremiah
+								<option value="25">Lamentations
+								<option value="26">Ezekiel
+								<option value="27">Daniel
+								<option value="28">Hosea
+								<option value="29">Joel
+								<option value="30">Amos
+								<option value="31">Obadiah
+								<option value="32">Jonah
+								<option value="33">Micah
+								<option value="34">Nahum
+								<option value="35">Habakkuk
+								<option value="36">Zephaniah
+								<option value="37">Haggai
+								<option value="38">Zechariah
+								<option value="39">Malachi
+								<option value="40">Matthew
+								<option value="41">Mark
+								<option value="42">Luke
+								<option value="43">John
+								<option value="44">Acts
+								<option value="45">Romans
+								<option value="46">1st Corinthians
+								<option value="47">2nd Corinthians
+								<option value="48">Galatians
+								<option value="49">Ephesians
+								<option value="50">Philippians
+								<option value="51">Colossians
+								<option value="52">1st Thessalonians
+								<option value="53">2nd Thessalonians
+								<option value="54">1st Timothy
+								<option value="55">2nd Timothy
+								<option value="56">Titus
+								<option value="57">Philemon
+								<option value="58">Hebrews
+								<option value="59">James
+								<option value="60">1st Peter
+								<option value="61">2nd Peter
+								<option value="62">1st John
+								<option value="63">2nd John
+								<option value="64">3rd John
+								<option value="65">Jude
+								<option value="66">Revelation
+							</SELECT>
+						</TD>
+					</TR>
+					<TR>
+						<TD ALIGHN=RIGHT VALIGN=TOP>Chapter</TD>
+						<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="chapter" TYPE="text" MAXLENGTH=3 id=chapter></TD>
+					</TR>
+					<TR>
+						<TD ALIGHN=RIGHT VALIGN=TOP>Verse</TD>
+						<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="verse" TYPE="text" MAXLENGTH=3 id=verse></TD>
+					</TR>
+					<TR>
+						<TD ALIGHN=RIGHT VALIGN=TOP>Verses</TD>
+						<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="verses" TYPE="text" MAXLENGTH=3 id=verses></TD>
+					</TR>
+					<TR>
+						<TD ALIGHN=RIGHT VALIGN=TOP>Lexicon #s</TD>
+						<TD ALIGN=LEFT VALIGN=TOP><INPUT NAME="strongs" TYPE="checkbox" id="strongs"></TD>
+					</TR>
+				</table>
+				<p>
+					<input type="submit" onclick="javascript: getresponse()" name="submit" value="Submit" />
+				</p>
+			</form>
+		</div>
+		<div id="testArea" class="information">
+		</div>
+		<div id="referencesArea" class="information">
+		</div>
+	</div>
+	<div id="contentArea" class="container">
+		<div id="responseArea">
+		</div>
+	</div>
+	<div id="headArea">
+	</div>
 </body>
+
 </html>
