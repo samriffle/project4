@@ -173,6 +173,8 @@
 			var bookInfo = " Book retrieved from file: " + XMLBook;
 			document.all.headArea.innerHTML = "<h6><font color=#000000>MVNU XML Bible Output</font>"
 				+ bookInfo + "</h6>";
+
+			// Initialize variable for http output, variables for modification in an object so they will work around lack of pass by reference in javascript
 			var response = "";
 			var boo = b;
 			var cha = c;
@@ -180,24 +182,15 @@
 			var head = true;
 			var content = { 'Book': boo, 'Chapter': cha, 'Verse': ver, 'Head': head, 'bookFile': XMLBook }; // Have an object store bible ops, then modify them internally
 			var goAhead = false;
+			// Check to see if a verse can be gotten with given http input
 			try {
 				getVerse(content);
 				goAhead = true;
 			}
 			catch (error) {
-                document.all.responseArea.innerHTML = "";
-                document.all.testArea.innerHTML = "";
-                document.all.referencesArea.innerHTML = "";
-                if (error == "no chapter") {
-                    //document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
-                    response += "<b><i>No such chapter " + document.getElementById('chapter').value + " in this book </i></b>";
-                }
-				if (error == "no verse") {
-                    //document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
-                    response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
-				}
+				response += clearAllError(error); // Clear all http windows, start fresh after that flub
 			}
-			if (goAhead) {
+			if (goAhead && Number.isInteger(verses)) { // Get verse frfr for as many as http requests
 				for (var i = 0; i < verses; i++) {
 					try {
 						document.all.responseArea.innerHTML = " ";
@@ -205,60 +198,22 @@
 							content['Verse'] += 1;
 						}
 						vtext = getVerse(content);
-						//document.all.responseArea.innerHTML += "<p>" + vtext + "</p>";
 						response += vtext + " ";
 						content['Head'] = false;
 					}
-					catch (error) {
+					catch (error) { 
 						if (error == "no chapter") {
-							//document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
 							response += "<b><i>No such chapter " + cha + " in this book </i></b>";
 							break;
 						}
 						if (error == "no verse") {
-							//document.all.responseArea.innerHTML += "<b><i>No such verse " + v + "</i></b>";
-							//response += "<b><i>No such verse " + v + "</i></b>";
-							if (Number.isInteger(content['Verse'])) {
+							if (Number.isInteger(content['Verse'])) { // Checks to see if verse input is just plain NaN
 								content['Head'] = true;
-								content['Chapter'] = (parseInt(content['Chapter']) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
+								content['Chapter'] = (parseInt(content['Chapter']) + 1).toString();
 								content['Verse'] = 1;
-								try {
-									vtext = getVerse(content);
-									response += vtext + " ";
-									content['Head'] = false;
-								}
-								catch (error) {											 //AND IT OVERRIDES ANY VARIABLES OUTSIDE ITSELF
-									//response += "<b><i>No such chapter " + cha + " in book " + boo + "</i></b>";
-									//break;
-									content['Head'] = true;
-									content['Book'] = (parseInt(content['Book']) + 1).toString();
-									content['bookFile'] = "/class/csc3004/XMLBible/";
-									if (bible == 1) {
-										content['bookFile'] = content['bookFile'] + "web_by_book/" + content['Book'] + ".xml";
-									}
-									else if (bible == 2) {
-										content['bookFile'] = content['bookFile'] + "kjv_by_book/" + content['Book'] + ".xml";
-									}
-									else {
-										// code for other xml versions of bible THAT I DONT HAVE
-									}
-									xmlhttp.open("GET", content['bookFile'], false);
-									xmlhttp.send();
-									xmlDoc = xmlhttp.responseXML;
-									content['Chapter'] = ((parseInt(content['Chapter']) - parseInt(content['Chapter'])) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
-									content['Verse'] = 1;
-									try {
-										vtext = getVerse(content);
-										response += vtext + " ";
-										content['Head'] = false;
-									}
-									catch (error) {
-										response += ""; // End of Bible
-										break;
-									}
-								}
+								response += tryAgain(content); // Look for a verse again
 							}
-							else {
+							else { // Input NaN? WHY? We handle that here
 								response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
 								break;
 							}
@@ -266,12 +221,18 @@
 					}
 				}
 			}
+			if (!Number.isInteger(verses)) {
+                document.all.responseArea.innerHTML = "";
+				response += "<b><i>Verses invalid</i></b>";
+            }
+			// Update http page with responses for verses, lexicons, definitions, etc.
 			document.all.responseArea.innerHTML += "<p>" + response + "</p>";
 			//clear definition window
 			document.all.testArea.innerHTML = "";
 			document.all.referencesArea.innerHTML = "";
 		} // end getResponse
 
+		// Gets the verse requested with the data stored in info
 		function getVerse(info) {
 			book = info['Book'];
 			chapter = info['Chapter'];
@@ -304,6 +265,7 @@
 			return (verseOutput);
 		} // end getVerse
 
+		// Gets the text from the node in the line of an xml bible and formats it appropriately
 		function getNodeString(node) {
 			var strongsEnabled = document.getElementById("strongs").checked;
 			var result = "";
@@ -323,13 +285,13 @@
                         result += nodeStr;
                     }
 				}
-				if (node.nodeName == "description") {
+				if (node.nodeName == "description") { // Strong tags may have descriptions in them. Italicize
                     for (n = 0; n < node.childNodes.length; n++) {
                         var nodeStr = "<i>" + getNodeString(node.childNodes[n]) + "</i>";
                         result += nodeStr;
                     }
                 }
-				else if (node.nodeName == "STYLE") {
+				else if (node.nodeName == "STYLE") { // Format tag with subtags also added to the return string
 					result += '<span style="' + node.getAttribute("css") + '">';
 					for (n = 0; n < node.childNodes.length; n++) {
 						var nodeStr = getNodeString(node.childNodes[n]);
@@ -337,37 +299,27 @@
 					}
 					result += "</span> ";
 				}
-				else if (node.nodeName == "strongs") {
+				else if (node.nodeName == "strongs") { 
 					if (node.childNodes[0] != null) {
 						// show the text of the word that is inside the strong tag
 						result += node.childNodes[0].nodeValue;
-						if (strongsEnabled) {
+						if (strongsEnabled) { // Lexicon is needed, so get the language of the strongs number and pass it off to be processed and added to result string
 							if (node.hasAttribute("hebrew")) {
-								var lexID = node.getAttribute("hebrew");
-								result += "<a href='javascript:getDef(\"hebrew\"," + lexID + ")'>";
-								result += "<i><font size=1 color=blue><sub>";
-								result += node.getAttribute("hebrew");
-								result += "</sub></font></i></a> ";
+								var lang = "hebrew";
+								result += setStrongNode(node, lang);
 							}
 							else if (node.hasAttribute("greek")) {
-								var lexID = node.getAttribute("greek");
-								result += "<a href='javascript:getDef(\"greek\"," + lexID + ")'>";
-								result += "<i><font size=1 color=blue><sub>";
-								result += node.getAttribute("greek");
-								result += "</sub></font></i></a> ";
+                                var lang = "greek";
+                                result += setStrongNode(node, lang);
 							}
 							else if (node.hasAttribute("number")) {
-								var lexID = node.getAttribute("number");
-								result += "<a href='javascript:getDef(\"number\"," + lexID + ")'>";
-								result += "<i><font size=1 color=blue><sub>";
-								result += node.getAttribute("number");
-								result += "</sub></font></i></a> ";
+                                var lang = "number";
+                                result += setStrongNode(node, lang);
 							}
 						}
 					}
 				}
-				else if (node.nodeName == "link") {
-					// Show hyperlinks in definition hyperlink (inception)
+				else if (node.nodeName == "link") { // Show hyperlinks in definition hyperlink (inception)
 					if (node.childNodes[0] != null) {
 						if (node.hasAttribute("target")) {
 							var targetID = node.getAttribute("target");
@@ -384,84 +336,15 @@
 						}
 					}
 				}
-				else if (node.nodeName == "ref") { 
-                    bookNames = [
-                        "Genesis",
-                        "Exodus",
-                        "Leviticus",
-                        "Numbers",
-                        "Deuteronomy",
-                        "Joshua",
-                        "Judges",
-                        "Ruth",
-                        "1 Samuel",
-                        "2 Samuel",
-                        "1 Kings",
-                        "2 Kings",
-                        "1 Chronicles",
-                        "2 Chronicles",
-                        "Ezra",
-                        "Nehemiah",
-                        "Esther",
-                        "Job",
-                        "Psalms",
-                        "Proverbs",
-                        "Ecclesiastes",
-                        "Song of Solomon",
-                        "Isaiah",
-                        "Jeremiah",
-                        "Lamentations",
-                        "Ezekiel",
-                        "Daniel",
-                        "Hosea",
-                        "Joel",
-                        "Amos",
-                        "Obadiah",
-                        "Jonah",
-                        "Micah",
-                        "Nahum",
-                        "Habakkuk",
-                        "Zephaniah",
-                        "Haggai",
-                        "Zechariah",
-                        "Malachi",
-                        "Matthew",
-                        "Mark",
-                        "Luke",
-                        "John",
-                        "Acts",
-                        "Romans",
-                        "1 Corinthians",
-                        "2 Corinthians",
-                        "Galatians",
-                        "Ephesians",
-                        "Philippians",
-                        "Colossians",
-                        "1 Thessalonians",
-                        "2 Thessalonians",
-                        "1 Timothy",
-                        "2 Timothy",
-                        "Titus",
-                        "Philemon",
-                        "Hebrews",
-                        "James",
-                        "1 Peter",
-                        "2 Peter",
-                        "1 John",
-                        "2 John",
-                        "3 John",
-                        "Jude",
-                        "Revelation",
-					];
-
-					// Link to a verse, render as hyperlink.
+                else if (node.nodeName == "ref") { // Link to a verse, render as hyperlink.
+                    bookNames = ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy", "Joshua","Judges",  "Ruth", "1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah", "Lamentations", "Ezekiel", "Daniel", "Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi", "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon", "Hebrews", "James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation",];
 					var book = "";
                     var b = node.getAttribute("b");
                     var c = node.getAttribute("ch");
                     var v = node.getAttribute("v");
-                    result += "<a href='javascript:verseRedirect(" + b + "," + c + "," + v + ")'>"; //<-- link not working
-					result += bookNames[b - 1] + " " + c + ":" + v; // Passing book doesnt work. Perhaps because its a string while the rest of the vars are ints
-					result += "</a> "; //verseRedirect(contents)
+                    result += "<a href='javascript:verseRedirect(" + b + "," + c + "," + v + ")'>"; 
+					result += bookNames[b - 1] + " " + c + ":" + v; 
+					result += "</a> "; 
 				}
 			}
 			return (result);
@@ -562,7 +445,7 @@
 			document.all.referencesArea.innerHTML = "<p><b><u>References</u></b></p>" + getDefRefs(lang, stringNum);
 		}
 
-		function getDefRefs(lang, stringNum) {
+		function getDefRefs(lang, stringNum) { // Put reference links in the definition window of a word when called from a node
 			var hebPath = "/class/csc3004/XMLBible/bible_refs_of_strongs_numbers/bible_refs_by_strongs_num_ot.xml";
 			var grkPath = "/class/csc3004/XMLBible/bible_refs_of_strongs_numbers/bible_refs_by_strongs_num_nt.xml";
 			var refPath = "";
@@ -589,9 +472,74 @@
 				return text;
 			}
 			else {
-				return "No references found"
+				return "No references found";
 			}
 		}
+
+		function clearAllError(error) { // Set all windows in http to blank, report what input is invalid
+			var response = "";
+            document.all.responseArea.innerHTML = "";
+            document.all.testArea.innerHTML = "";
+            document.all.referencesArea.innerHTML = "";
+            if (error == "no chapter") {
+                //document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
+                response += "<b><i>No such chapter " + document.getElementById('chapter').value + " in this book </i></b>";
+            }
+            else if (error == "no verse") {
+                //document.all.responseArea.innerHTML += "<b><i>No such chapter " + c + "</i></b>";
+                response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
+			}
+			return response;
+        }
+
+		function tryAgain(content) { // Search for verse again with an assumed new chapter
+			var response = "";
+            try {
+                var vtext = getVerse(content);
+                response += vtext + " ";
+                content['Head'] = false;
+            }
+			catch (error) {
+				// Update variables, try to search AGAIN with a new BOOK
+                content['Head'] = true;
+                content['Book'] = (parseInt(content['Book']) + 1).toString();
+                content['bookFile'] = "/class/csc3004/XMLBible/";
+                if (bible == 1) {
+                    content['bookFile'] = content['bookFile'] + "web_by_book/" + content['Book'] + ".xml";
+                }
+                else if (bible == 2) {
+                    content['bookFile'] = content['bookFile'] + "kjv_by_book/" + content['Book'] + ".xml";
+                }
+                else {
+                    // code for other xml versions of bible THAT I DONT HAVE
+				}
+                xmlhttp.open("GET", content['bookFile'], false);
+                xmlhttp.send();
+				xmlDoc = xmlhttp.responseXML;
+				// New book since updating chapter didnt work out. Reset chapter to 1, verse to 1
+                content['Chapter'] = ((parseInt(content['Chapter']) - parseInt(content['Chapter'])) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
+                content['Verse'] = 1;
+                try { // Open next book searching for the verses
+                    vtext = getVerse(content);
+                    response += vtext + " ";
+                    content['Head'] = false;
+                }
+                catch (error) {
+                    response += ""; // End of Bible
+                }
+			}
+			return response;
+		}
+
+		function setStrongNode(node, nodeLang) { // Set the node to have a hyperlink to get the definition of the word
+			var lexID = node.getAttribute(nodeLang);
+			var result = "";
+            result += "<a href='javascript:getDef(\"" + nodeLang + "\"," + lexID + ")'>";
+            result += "<i><font size=1 color=blue><sub>";
+            result += node.getAttribute(nodeLang);
+			result += "</sub></font></i></a> ";
+			return result;
+        }
 
 	</script>
 </head>
