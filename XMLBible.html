@@ -202,22 +202,7 @@
 						content['Head'] = false;
 					}
 					catch (error) { 
-						if (error == "no chapter") {
-							response += "<b><i>No such chapter " + cha + " in this book </i></b>";
-							break;
-						}
-						if (error == "no verse") {
-							if (Number.isInteger(content['Verse'])) { // Checks to see if verse input is just plain NaN
-								content['Head'] = true;
-								content['Chapter'] = (parseInt(content['Chapter']) + 1).toString();
-								content['Verse'] = 1;
-								response += tryAgain(content); // Look for a verse again
-							}
-							else { // Input NaN? WHY? We handle that here
-								response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
-								break;
-							}
-						}
+						response += recoverError(error, content);
 					}
 				}
 			}
@@ -299,42 +284,34 @@
 					}
 					result += "</span> ";
 				}
-				else if (node.nodeName == "strongs") { 
-					if (node.childNodes[0] != null) {
-						// show the text of the word that is inside the strong tag
-						result += node.childNodes[0].nodeValue;
-						if (strongsEnabled) { // Lexicon is needed, so get the language of the strongs number and pass it off to be processed and added to result string
-							if (node.hasAttribute("hebrew")) {
-								var lang = "hebrew";
-								result += setStrongNode(node, lang);
-							}
-							else if (node.hasAttribute("greek")) {
-                                var lang = "greek";
-                                result += setStrongNode(node, lang);
-							}
-							else if (node.hasAttribute("number")) {
-                                var lang = "number";
-                                result += setStrongNode(node, lang);
-							}
-						}
+                else if ((node.nodeName == "strongs") && (node.childNodes[0] != null) && strongsEnabled) { // Lexicon is needed, so get the language of the strongs number and pass it off to be processed and added to result string
+					// show the text of the word that is inside the strong tag
+					result += node.childNodes[0].nodeValue;
+					if (node.hasAttribute("hebrew")) {
+						var lang = "hebrew";
+						result += setStrongNode(node, lang);
+					}
+					else if (node.hasAttribute("greek")) {
+                        var lang = "greek";
+                        result += setStrongNode(node, lang);
+					}
+					else if (node.hasAttribute("number")) {
+                        var lang = "number";
+                        result += setStrongNode(node, lang);
 					}
 				}
-				else if (node.nodeName == "link") { // Show hyperlinks in definition hyperlink (inception)
-					if (node.childNodes[0] != null) {
-						if (node.hasAttribute("target")) {
-							var targetID = node.getAttribute("target");
-							var number = parseInt(targetID.substring(1));
-							if (targetID.charAt(0) == "H") {
-								result += "<a href='javascript:getDef(\"hebrew\"," + number + ")'>";
-							}
-							else if (targetID.charAt(0) == "G") {
-								result += "<a href='javascript:getDef(\"greek\"," + number + ")'>";
-							}
-							result += "<i><font size=1 color=blue>";
-							result += node.getAttribute("target");
-							result += "</font></i></a> ";
-						}
+                else if ((node.nodeName == "link") && (node.childNodes[0] != null) && (node.hasAttribute("target"))) { // Show hyperlinks in definition hyperlink (inception)
+					var targetID = node.getAttribute("target");
+					var number = parseInt(targetID.substring(1));
+					if (targetID.charAt(0) == "H") {
+						result += "<a href='javascript:getDef(\"hebrew\"," + number + ")'>";
 					}
+					else if (targetID.charAt(0) == "G") {
+						result += "<a href='javascript:getDef(\"greek\"," + number + ")'>";
+					}
+					result += "<i><font size=1 color=blue>";
+					result += node.getAttribute("target");
+					result += "</font></i></a> ";
 				}
                 else if (node.nodeName == "ref") { // Link to a verse, render as hyperlink.
                     bookNames = ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy", "Joshua","Judges",  "Ruth", "1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah", "Lamentations", "Ezekiel", "Daniel", "Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi", "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon", "Hebrews", "James", "1 Peter", "2 Peter", "1 John", "2 John", "3 John", "Jude", "Revelation",];
@@ -539,6 +516,25 @@
             result += node.getAttribute(nodeLang);
 			result += "</sub></font></i></a> ";
 			return result;
+		}
+
+		function recoverError(error, content) { // Recover on intial verse search error
+			var response = "";
+			if (error == "no chapter") {
+                response += "<b><i>No such chapter " + content['Chapter'] + " in this book </i></b>";
+            }
+            if (error == "no verse") {
+                if (Number.isInteger(content['Verse'])) { // Checks to see if verse input is just plain NaN
+                    content['Head'] = true;
+                    content['Chapter'] = (parseInt(content['Chapter']) + 1).toString();
+                    content['Verse'] = 1;
+                    response += tryAgain(content); // Look for a verse again
+                }
+                else { // Input NaN? WHY? We handle that here
+                    response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
+                }
+			}
+			return response;
         }
 
 	</script>
