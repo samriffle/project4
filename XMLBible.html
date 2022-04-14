@@ -88,10 +88,13 @@
         }
 
         #headArea {
-            height: 0vh;
-            background: #392613;
+            text-align: center;
+            font-size: 1.5em;
+            margin: 0;
+            /*flex: 0.85;*/
             overflow: auto;
-            margin-bottom: 0.1em;
+            background: #EEE1C6;
+            /*border: 2px solid black;*/
         }
 
         #responseArea {
@@ -170,10 +173,6 @@
 			xmlhttp.send();
 			xmlDoc = xmlhttp.responseXML; 
 
-			var bookInfo = " Book retrieved from file: " + XMLBook;
-			document.all.headArea.innerHTML = "<h6><font color=#000000>MVNU XML Bible Output</font>"
-				+ bookInfo + "</h6>";
-
 			// Initialize variable for http output, variables for modification in an object so they will work around lack of pass by reference in javascript
 			var response = "";
 			var boo = b;
@@ -202,6 +201,7 @@
 			//clear definition window
 			document.all.testArea.innerHTML = "";
 			document.all.referencesArea.innerHTML = "";
+			document.all.headArea.innerHTML = "";
 		} // end getResponse
 
 		// Gets the verse requested with the data stored in info
@@ -331,8 +331,8 @@
             xmlhttp.open("GET", redirectPath, false);
             xmlhttp.send();
 			xmlDoc = xmlhttp.responseXML;
-            var response = getVerse(content);
-			document.all.responseArea.innerHTML = response + " ";
+			var response = getVerse(content);
+            document.all.headArea.innerHTML = "<h6><font color=#000000>" + response + "</font></h6>";
         }
 
 		// Retrieve and display lexicon entries
@@ -543,7 +543,6 @@
 			}
 			return response;
         }
-
 	</script>
 </head>
 
@@ -553,7 +552,7 @@
 		<div id="tableArea">
 			<form onsubmit="return false">
 				<!-- submit button defines handler below:
-				 onclick="javascript: getresponse()" -->
+			 onclick="javascript: getresponse()" -->
 				<h1>Bible Search from XML files</h1>
 				<table>
 					<TR>
@@ -666,11 +665,11 @@
 		<div id="referencesArea" class="information">
 		</div>
 	</div>
-	<div id="contentArea" class="container">
+	<div id="contentArea" class="container vertical">
+		<div id="headArea">
+		</div>
 		<div id="responseArea">
 		</div>
-	</div>
-	<div id="headArea">
 	</div>
 </body>
 
