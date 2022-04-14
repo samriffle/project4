@@ -168,7 +168,7 @@
 			}
 			xmlhttp.open("GET", XMLBook, false);
 			xmlhttp.send();
-			xmlDoc = xmlhttp.responseXML; ///////////////////////////////// Made global
+			xmlDoc = xmlhttp.responseXML; 
 
 			var bookInfo = " Book retrieved from file: " + XMLBook;
 			document.all.headArea.innerHTML = "<h6><font color=#000000>MVNU XML Bible Output</font>"
@@ -191,20 +191,7 @@
 				response += clearAllError(error); // Clear all http windows, start fresh after that flub
 			}
 			if (goAhead && Number.isInteger(verses)) { // Get verse frfr for as many as http requests
-				for (var i = 0; i < verses; i++) {
-					try {
-						document.all.responseArea.innerHTML = " ";
-						if (i > 0) {
-							content['Verse'] += 1;
-						}
-						vtext = getVerse(content);
-						response += vtext + " ";
-						content['Head'] = false;
-					}
-					catch (error) { 
-						response += recoverError(error, content);
-					}
-				}
+				response += doRequest(content, verses);
 			}
 			if (!Number.isInteger(verses)) {
                 document.all.responseArea.innerHTML = "";
@@ -449,7 +436,8 @@
 				return text;
 			}
 			else {
-				return "No references found";
+				text += "No references found";
+				return text;
 			}
 		}
 
@@ -494,7 +482,7 @@
                 xmlhttp.send();
 				xmlDoc = xmlhttp.responseXML;
 				// New book since updating chapter didnt work out. Reset chapter to 1, verse to 1
-                content['Chapter'] = ((parseInt(content['Chapter']) - parseInt(content['Chapter'])) + 1).toString();                     //APPARENTLY THE CATCH BLOCK SCOPE IS LOCAL
+                content['Chapter'] = ((parseInt(content['Chapter']) - parseInt(content['Chapter'])) + 1).toString();                     
                 content['Verse'] = 1;
                 try { // Open next book searching for the verses
                     vtext = getVerse(content);
@@ -532,6 +520,25 @@
                 }
                 else { // Input NaN? WHY? We handle that here
                     response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
+                }
+			}
+			return response;
+        }
+
+		function doRequest(content, verses) {
+			var response = "";
+            for (var i = 0; i < verses; i++) {
+                try {
+                    document.all.responseArea.innerHTML = " ";
+                    if (i > 0) {
+                        content['Verse'] += 1;
+                    }
+                    vtext = getVerse(content);
+                    response += vtext + " ";
+                    content['Head'] = false;
+                }
+                catch (error) {
+                    response += recoverError(error, content);
                 }
 			}
 			return response;
