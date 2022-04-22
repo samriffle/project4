@@ -2,6 +2,7 @@
  -- James Skon: original version April 2011
  -- Bob Kasper: revised March 2021
  -- Mount Vernon Nazarene University
+ -- All thats left is to refactor some of the bible version checks somehow.
  -->
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html
@@ -159,27 +160,14 @@
 
 			// TODO: add code to select a version of the Bible based on user input
 			// (only KJV and WEB versions are available with XML files)
-			var XMLBook = biblePath;
-			if (bible == 1) {
-				XMLBook = XMLBook + "web_by_book/" + b + ".xml";
-			}
-			else if (bible == 2) {
-				XMLBook = XMLBook + "kjv_by_book/" + b + ".xml";
-			}
-			else {
-				// code for other xml versions of bible THAT I DONT HAVE
-			}
-			xmlhttp.open("GET", XMLBook, false);
-			xmlhttp.send();
-			xmlDoc = xmlhttp.responseXML; 
-
+			var XMLBook = getPath(b);
 			// Initialize variable for http output, variables for modification in an object so they will work around lack of pass by reference in javascript
 			var response = "";
-			var boo = b;
-			var cha = c;
-			var ver = v;
-			var head = true;
-			var content = { 'Book': boo, 'Chapter': cha, 'Verse': ver, 'Head': head, 'bookFile': XMLBook }; // Have an object store bible ops, then modify them internally
+			var book = b;
+			var chapter = c;
+			var verse = v;
+			var chapHeader = true;
+			var content = { 'Book': book, 'Chapter': chapter, 'Verse': verse, 'Head': chapHeader, 'bookFile': XMLBook }; // Have an object store bible ops, then modify them internally
 			var goAhead = false;
 			// Check to see if a verse can be gotten with given http input
 			try {
@@ -209,16 +197,16 @@
 			book = info['Book'];
 			chapter = info['Chapter'];
 			verse = info['Verse'];
-			header = info['Head'];
+			chapHeader = info['Head'];
 			var verseOutput = "";
-			if (header) {
+			if (chapHeader) {
 				verseOutput += "<p>" + xmlDoc.getElementsByTagName("book")[0].getAttribute("name");
 			}
 			var c = xmlDoc.getElementsByTagName("chapter")[chapter - 1];
 			if (c == null) {
 				throw "no chapter";
 			}
-			if (header) {
+			if (chapHeader) {
 				verseOutput += " ";
 				verseOutput += c.getAttribute("number");
 			}
@@ -226,7 +214,7 @@
 			if (v == null) {
 				throw "no verse";
 			}
-			if (header) {
+			if (chapHeader) {
 				verseOutput += " </p>";
 			}
 			verseOutput += "<sub>" + v.getAttribute("number") + "</sub>";
@@ -286,6 +274,9 @@
 						var lang = "number";
 						result += setStrongNode(node, lang);
 					}
+                    else if (!strongsEnabled && bible == 2) {
+                        result += " ";
+                    }
 				}
 				else if ((node.nodeName == "link") && (node.childNodes[0] != null) && (node.hasAttribute("target"))) { // Show hyperlinks in definition hyperlink (inception)
 					var targetID = node.getAttribute("target");
@@ -316,21 +307,9 @@
 
 		function verseRedirect(book, chapter, verse) {
 			// Create object here
-			var header = true;
-			var redirectPath = "";
-			if (bible == 1) {
-                redirectPath = "/class/csc3004/XMLBible/" + "web_by_book/" + book + ".xml";
-			}
-			else if (bible == 2) {
-                redirectPath = "/class/csc3004/XMLBible/" + "kjv_by_book/" + book + ".xml";
-			}
-			else {
-				// Nothing
-			}
-            var content = { 'Book': book, 'Chapter': chapter, 'Verse': verse, 'Head': header, 'bookFile': redirectPath };
-            xmlhttp.open("GET", redirectPath, false);
-            xmlhttp.send();
-			xmlDoc = xmlhttp.responseXML;
+			var chapHeader = true;
+			var redirectPath = getPath(book);
+            var content = { 'Book': book, 'Chapter': chapter, 'Verse': verse, 'Head': chapHeader, 'bookFile': redirectPath };
 			var response = getVerse(content);
             document.all.headArea.innerHTML = "<h6><font color=#000000>" + response + "</font></h6>";
         }
@@ -457,7 +436,42 @@
 			return response;
         }
 
-		function tryAgain(content) { // Search for verse again with an assumed new chapter
+		function getPath(book) {
+            var nextPath = biblePath;
+            if (bible == "WEB") {
+                nextPath += "web_by_book/" + book + ".xml";
+            }
+            else if (bible == "KJV") {
+                nextPath += "kjv_by_book/" + book + ".xml";
+            }
+            else {
+                // code for other xml versions of bible THAT I DONT HAVE
+                nextPath += "web_by_book/" + book + ".xml";
+            }
+            xmlhttp.open("GET", nextPath, false);
+            xmlhttp.send();
+			xmlDoc = xmlhttp.responseXML;
+			return nextPath;
+        }
+
+		function nextBookSearch(content) {
+			var response = "";
+			getPath(content['Book']);
+            // New book since updating chapter didnt work out. Reset chapter to 1, verse to 1
+            content['Chapter'] = "1";
+            content['Verse'] = 1;
+            try { // Open next book searching for the verses
+                var vtext = getVerse(content);
+                response += vtext + " ";
+                content['Head'] = false;
+            }
+            catch (error) {
+                response += ""; // End of Bible
+			}
+			return response;
+        }
+
+		function nextChapSearch(content) { // Search for verse again with an assumed new chapter
 			var response = "";
             try {
                 var vtext = getVerse(content);
@@ -468,30 +482,7 @@
 				// Update variables, try to search AGAIN with a new BOOK
                 content['Head'] = true;
                 content['Book'] = (parseInt(content['Book']) + 1).toString();
-                content['bookFile'] = "/class/csc3004/XMLBible/";
-                if (bible == 1) {
-                    content['bookFile'] = content['bookFile'] + "web_by_book/" + content['Book'] + ".xml";
-                }
-                else if (bible == 2) {
-                    content['bookFile'] = content['bookFile'] + "kjv_by_book/" + content['Book'] + ".xml";
-                }
-                else {
-                    // code for other xml versions of bible THAT I DONT HAVE
-				}
-                xmlhttp.open("GET", content['bookFile'], false);
-                xmlhttp.send();
-				xmlDoc = xmlhttp.responseXML;
-				// New book since updating chapter didnt work out. Reset chapter to 1, verse to 1
-                content['Chapter'] = ((parseInt(content['Chapter']) - parseInt(content['Chapter'])) + 1).toString();                     
-                content['Verse'] = 1;
-                try { // Open next book searching for the verses
-                    vtext = getVerse(content);
-                    response += vtext + " ";
-                    content['Head'] = false;
-                }
-                catch (error) {
-                    response += ""; // End of Bible
-                }
+				response += nextBookSearch(content);
 			}
 			return response;
 		}
@@ -506,7 +497,7 @@
 			return result;
 		}
 
-		function recoverError(error, content) { // Recover on intial verse search error
+		function recoverError(error, content) { // Recover on verse search error
 			var response = "";
 			if (error == "no chapter") {
                 response += "<b><i>No such chapter " + content['Chapter'] + " in this book </i></b>";
@@ -516,7 +507,7 @@
                     content['Head'] = true;
                     content['Chapter'] = (parseInt(content['Chapter']) + 1).toString();
                     content['Verse'] = 1;
-                    response += tryAgain(content); // Look for a verse again
+                    response += nextChapSearch(content); // Look for a verse again
                 }
                 else { // Input NaN? WHY? We handle that here
                     response += "<b><i>No such verse " + document.getElementById('verse').value + " in this book </i></b>";
@@ -559,8 +550,8 @@
 						<TD ALIGHN=RIGHT VALIGN=TOP>Bible</TD>
 						<TD ALIGN=LEFT VALIGN=TOP>
 							<SELECT NAME="bible" ID=bible>
-								<OPTION VALUE="1">World English Bible
-								<OPTION VALUE="2">King James Version
+								<OPTION VALUE="WEB">World English Bible
+								<OPTION VALUE="KJV">King James Version
 							</SELECT>
 						</TD>
 					</TR>
